@@ -43,18 +43,19 @@
 
 ### 浅色模式（默认）
 
-![[Pasted image 20260415121842.png]]
+![浅色模式](Pasted%20image%2020260415121842.png)
 
 ### 深色模式
 
-![[Pasted image 20260415121909.png]]
+![深色模式](Pasted%20image%2020260415121909.png)
+
 ### 编辑模式
 
-![[Pasted image 20260415121938.png]]
+![编辑模式1](Pasted%20image%2020260415121938.png)
 
-![[Pasted image 20260415122040.png]]
+![编辑模式2](Pasted%20image%2020260415122040.png)
 
-![[Pasted image 20260415122143.png]]
+![编辑模式3](Pasted%20image%2020260415122143.png)
 
 ---
 
