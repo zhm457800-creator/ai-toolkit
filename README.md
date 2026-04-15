@@ -62,7 +62,7 @@
 ## 🚀 快速开始
 
 ### 方式一：直接打开
-下载 `plan1-enhanced.html` 文件，双击用浏览器打开即可。
+下载 `index.html` 文件，双击用浏览器打开即可。
 
 ### 方式二：本地服务器
 ```bash
@@ -72,12 +72,12 @@ python3 -m http.server 8080
 # 或使用 Node.js
 npx serve .
 ```
-然后访问 `http://localhost:8080/plan1-enhanced.html`
+然后访问 `http://localhost:8080/index.html`
 
 ### 方式三：部署到 GitHub Pages
-1. 将 `plan1-enhanced.html` 推送到 GitHub 仓库
+1. 将 `index.html` 推送到 GitHub 仓库
 2. 仓库 Settings → Pages → Source 选 `main` 分支
-3. 访问 `https://你的用户名.github.io/仓库名/plan1-enhanced.html`
+3. 访问 `https://你的用户名.github.io/仓库名/`
 
 ---
 
@@ -95,11 +95,8 @@ npx serve .
 ### 文件结构
 ```
 ai-toolkit/
-├── plan1-enhanced.html    # 主文件（单文件，包含所有代码）
-├── assets/                 # 资源目录
-│   ├── screenshot-light.png
-│   ├── screenshot-dark.png
-│   └── screenshot-edit.png
+├── index.html              # 主文件（单文件，包含所有代码）
+├── Pasted image*.png       # 截图预览
 └── README.md               # 项目说明
 ```
 
