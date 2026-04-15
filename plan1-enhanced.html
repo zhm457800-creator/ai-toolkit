@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Toolkit - Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#1A1A1B;--bg-edit:#1e1e1f;--surface:rgba(40,38,37,0.65);--surface-h:rgba(50,48,47,0.75);
+    --card:rgba(42,40,39,0.55);--card-h:rgba(55,52,50,0.65);
+    --t1:#F4F1ED;--t2:#a8a4a0;--t3:#706c68;
+    --accent:#d4a5a5;--accent-dim:rgba(212,165,165,0.12);--accent-glow:rgba(212,165,165,0.25);
+    --green:#22c55e;--gold:#f0c060;--blue:#6ea8fe;
+    --border:rgba(244,241,237,0.08);--border-h:rgba(212,165,165,0.35);
+    --danger:#ef4444;
+  }
+  body{background:var(--bg);color:var(--t1);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;overflow-x:hidden;transition:background .4s}
+  body.edit-active{background:var(--bg-edit)}
+
+  /* ===== 星空 ===== */
+  #starfield{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+  .star{position:absolute;border-radius:50%;background:rgba(255,255,255,0.4);animation:twinkle var(--dur) ease-in-out infinite}
+  @keyframes twinkle{0%,100%{opacity:.15}50%{opacity:.7}}
+
+  /* ===== 超新星彩蛋 ===== */
+  #supernova{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9998;opacity:0;transition:opacity .1s}
+  #supernova.boom{opacity:1}
+  .nova-particle{position:absolute;border-radius:50%;animation:novaFly 1.5s ease-out forwards}
+  @keyframes novaFly{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}}
+  .nova-quote{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--accent);text-align:center;max-width:600px;line-height:1.8;opacity:0;transition:opacity .5s;pointer-events:none;text-shadow:0 0 30px rgba(212,165,165,0.5)}
+  .nova-quote.show{opacity:1}
+
+  /* ===== 编辑模式横幅（增强版） ===== */
+  #editBanner{position:fixed;top:0;left:0;right:0;z-index:300;height:44px;background:rgba(212,165,165,0.08);border-bottom:1px solid var(--accent);display:flex;align-items:center;justify-content:center;gap:14px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--accent);transform:translateY(-100%);transition:transform .3s ease;backdrop-filter:blur(20px) saturate(1.2)}
+  #editBanner.active{transform:translateY(0)}
+  #editBanner .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.5s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  #editBanner .exit-btn{margin-left:20px;padding:4px 14px;border:1px solid var(--accent);border-radius:4px;background:transparent;color:var(--accent);font-family:inherit;font-size:10px;cursor:pointer;letter-spacing:1px;transition:background .2s}
+  #editBanner .exit-btn:hover{background:var(--accent-dim)}
+
+  /* ===== 导航 ===== */
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:var(--surface);backdrop-filter:blur(24px) saturate(1.3);border-bottom:1px solid var(--border);transition:top .3s,background .4s}
+  nav.shifted{top:44px}
+  .logo{display:flex;align-items:center;gap:10px;text-decoration:none;cursor:pointer;user-select:none}
+  .logo-badge{width:36px;height:36px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--accent);transition:transform .3s}
+  .logo-badge.shake{animation:shake .4s ease}
+  @keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+  .logo-text{font-size:16px;font-weight:700;letter-spacing:2px;color:var(--t1);text-transform:uppercase}
+  .nav-right{display:flex;align-items:center;gap:12px}
+  .nav-links{display:flex;gap:32px;list-style:none}
+  .nav-links a{font-size:12px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--t2);text-decoration:none;transition:color .3s;position:relative}
+  .nav-links a:hover{color:var(--t1)}
+  .nav-links a.active{color:var(--t1)}
+  .nav-links a.active::after{content:'';position:absolute;bottom:-4px;left:0;right:0;height:1px;background:var(--accent)}
+  .nav-icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .3s;position:relative}
+  .nav-icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .nav-icon-btn.lock-active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+
+  /* ===== 主内容 ===== */
+  main{position:relative;z-index:1;padding:120px 48px 80px;max-width:1400px;margin:0 auto;transition:padding-top .3s}
+  body.edit-active main{padding-top:148px}
+  .hero{display:flex;align-items:flex-start;justify-content:space-between;gap:40px;margin-bottom:40px}
+  .hero-content{flex:1;max-width:650px}
+  .section-number{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t3);letter-spacing:2px;margin-bottom:12px}
+  .hero h1{font-size:clamp(32px,5vw,60px);font-weight:800;text-transform:uppercase;letter-spacing:-0.03em;line-height:1.1;margin-bottom:16px}
+  .hero h1 .accent{color:var(--accent);font-style:italic}
+  .hero p{font-size:15px;color:var(--t2);max-width:600px;line-height:1.7}
+  /* hero 右侧快速添加入口 */
+  .hero-aside{flex-shrink:0;width:200px;display:flex;flex-direction:column;gap:16px}
+  .quick-add{padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all .3s;text-align:center}
+  .quick-add:hover{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-2px)}
+  .quick-add .qa-icon{font-size:28px;margin-bottom:8px}
+  .quick-add .qa-title{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--t1);text-transform:uppercase;margin-bottom:4px}
+  .quick-add .qa-desc{font-size:11px;color:var(--t3);line-height:1.4}
+  .quick-add.unlocked{border-color:var(--accent);background:var(--accent-dim)}
+  .quick-add.unlocked .qa-desc{color:var(--accent)}
+  /* 统计卡片 */
+  .stats-card{padding:16px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px}
+  .stats-card .sc-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+  .stats-card .sc-row:last-child{border:none}
+  .stats-card .sc-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase}
+  .stats-card .sc-val{font-size:14px;font-weight:600;color:var(--t1)}
+  .stats-card .sc-val.accent{color:var(--accent)}
+  
+  /* ===== 弹出式添加卡片 ===== */
+  .add-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(8px)}
+  .add-modal.active{opacity:1;pointer-events:all}
+  .add-card{width:420px;max-width:90vw;background:var(--surface);border:1px solid var(--border);border-radius:16px;backdrop-filter:blur(24px) saturate(1.2);transform:scale(.95) translateY(20px);transition:transform .3s ease;overflow:hidden}
+  .add-modal.active .add-card{transform:scale(1) translateY(0)}
+  .add-card-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .add-card-header h3{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t1)}
+  .add-card-close{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+  .add-card-close:hover{border-color:var(--accent);color:var(--accent)}
+  .add-card-body{padding:24px}
+  .add-input-zone{border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;transition:all .3s;cursor:pointer}
+  .add-input-zone:hover,.add-input-zone.drag-over{border-color:var(--accent);background:var(--accent-dim)}
+  .add-input-zone .ai-icon{font-size:32px;margin-bottom:12px;color:var(--t3)}
+  .add-input-zone .ai-text{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--t2);margin-bottom:8px}
+  .add-input-zone .ai-hint{font-size:11px;color:var(--t3)}
+  .add-input-zone input{width:100%;margin-top:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;text-align:center}
+  .add-input-zone input:focus{border-color:var(--accent)}
+  .add-preview{margin-top:20px;padding:16px;background:var(--surface);border-radius:12px;border:1px solid var(--border)}
+  .add-preview-header{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
+  .add-preview-content{display:flex;align-items:center;gap:14px}
+  .add-preview-icon{width:48px;height:48px;border-radius:10px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
+  .add-preview-icon img{width:28px;height:28px;object-fit:contain}
+  .add-preview-info{flex:1}
+  .add-preview-name{font-size:15px;font-weight:600;margin-bottom:4px}
+  .add-preview-url{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);word-break:break-all}
+  .add-preview-tags{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+  .add-card-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:12px;justify-content:flex-end}
+  .add-card-footer button{padding:10px 20px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+  .add-btn-cancel{border:1px solid var(--border);background:transparent;color:var(--t2)}
+  .add-btn-cancel:hover{border-color:var(--t2);color:var(--t1)}
+  .add-btn-confirm{border:1px solid var(--accent);background:transparent;color:var(--accent)}
+  .add-btn-confirm:hover{background:var(--accent-dim)}
+  .add-btn-confirm:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ===== 工具栏 ===== */
+  .toolbar{display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2)}
+  .search-box{flex:1;min-width:260px;position:relative}
+  .search-box input{width:100%;padding:12px 16px 12px 44px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border-color .3s}
+  .search-box input::placeholder{color:var(--t3)}
+  .search-box input:focus{border-color:var(--accent)}
+  .search-box .s-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:16px}
+  .toolbar-actions{display:flex;gap:8px}
+  .tb-btn{padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--t2);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;transition:all .3s;text-transform:uppercase;white-space:nowrap}
+  .tb-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .tb-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+  /* ===== 筛选 ===== */
+  .filter-bar{display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2)}
+  .pill{padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--t2);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .3s;white-space:nowrap}
+  .pill:hover{border-color:var(--accent);color:var(--accent)}
+  .pill.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+  /* ===== 对比栏 ===== */
+  #compareBar{position:fixed;bottom:-80px;left:50%;transform:translateX(-50%);z-index:150;display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--surface);border:1px solid var(--border-h);border-radius:12px;backdrop-filter:blur(20px) saturate(1.2);transition:bottom .4s ease;white-space:nowrap}
+  #compareBar.active{bottom:24px}
+  #compareBar .cb-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3);letter-spacing:1px}
+  #compareBar .cb-items{display:flex;gap:6px;align-items:center}
+  #compareBar .cb-chip{padding:4px 10px;border-radius:4px;background:var(--accent-dim);font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:6px}
+  #compareBar .cb-chip .remove{cursor:pointer;opacity:.6;transition:opacity .2s}
+  #compareBar .cb-chip .remove:hover{opacity:1}
+  #compareBar .cb-compare{padding:8px 20px;border:1px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;transition:all .2s}
+  #compareBar .cb-compare:hover{background:var(--accent-dim)}
+  #compareBar .cb-clear{padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--t3);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;transition:all .2s}
+
+  /* ===== 卡片网格 ===== */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;cursor:pointer;transition:transform .4s,box-shadow .4s,border-color .4s,border-style .3s;position:relative;overflow:hidden;transform-style:preserve-3d;perspective:800px;backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.05),0 2px 8px rgba(0,0,0,0.08)}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0;transition:opacity .4s}
+  .card:hover{border-color:var(--border-h);box-shadow:0 8px 32px rgba(0,0,0,0.15)}
+  .card:hover::before{opacity:1}
+  /* 编辑模式卡片样式 */
+  body.edit-active .card{border-style:dashed;border-color:rgba(212,165,165,0.15)}
+  body.edit-active .card:hover{border-style:solid;border-color:var(--border-h)}
+  body.edit-active .card .edit-hint{display:flex}
+  .card .edit-hint{display:none;position:absolute;top:10px;right:10px;font-size:12px;opacity:.5;pointer-events:none}
+  .card.favorited{border-color:rgba(240,192,96,0.3) !important;border-style:solid !important}
+  .card.favorited::after{content:'★';position:absolute;top:12px;right:12px;color:var(--gold);font-size:14px;z-index:2}
+  .card.draft{border-color:var(--t3) !important}
+  .card.draft .draft-badge{position:absolute;top:12px;right:12px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--t3);background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:3px;z-index:2}
+  .card .compare-check{position:absolute;top:12px;left:12px;width:20px;height:20px;border-radius:4px;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;transition:all .2s;z-index:5;opacity:0}
+  .card:hover .compare-check{opacity:1}
+  .card .compare-check.checked{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);opacity:1}
+  .card-icon{width:52px;height:52px;border-radius:12px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px;border:1px solid rgba(212,165,165,0.08);overflow:hidden}
+  .card-icon img{width:32px;height:32px;object-fit:contain}
+  .card-name{font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+  .card-desc{font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.5px;color:var(--accent);background:var(--accent-dim);padding:3px 8px;border-radius:4px;text-transform:uppercase}
+  /* 标签编辑器 */
+  .tag-editor{margin-top:12px}
+  .tag-editor-header{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+  .tag-editor-list{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .tag-editor-list .te-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;transition:all .2s;border:1px solid var(--border);color:var(--t2);background:transparent}
+  .tag-editor-list .te-tag:hover{border-color:var(--accent);color:var(--accent)}
+  .tag-editor-list .te-tag.selected{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+  .tag-editor-list .te-tag .remove-tag{font-size:10px;opacity:.5;cursor:pointer;margin-left:2px}
+  .tag-editor-list .te-tag .remove-tag:hover{opacity:1;color:var(--danger)}
+  .tag-editor-input{display:flex;gap:8px}
+  .tag-editor-input input{flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-family:'Inter',sans-serif;font-size:12px;outline:none}
+  .tag-editor-input input:focus{border-color:var(--accent)}
+  .tag-editor-input button{padding:8px 14px;border:1px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);font-size:11px;cursor:pointer;transition:all .2s}
+  .tag-editor-input button:hover{background:var(--accent-dim)}
+  /* 最后使用时间 */
+  .last-used{display:inline-flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.5px;padding:3px 10px;border-radius:4px;margin-bottom:14px}
+  .last-used.today{color:#22c55e;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2)}
+  .last-used.recent{color:var(--accent);background:var(--accent-dim);border:1px solid rgba(212,165,165,0.15)}
+  .last-used.soon{color:var(--gold);background:rgba(240,192,96,0.1);border:1px solid rgba(240,192,96,0.15)}
+  .last-used.long-ago{color:var(--t3);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)}
+  .last-used.never{color:var(--t3);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);font-style:italic}
+  .card-footer{display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--border)}
+  .stars{display:flex;gap:2px}
+  .star-f{color:var(--accent);font-size:13px;cursor:default}
+  .star-e{color:var(--t3);font-size:13px;cursor:default}
+  .star-edit{cursor:pointer;transition:transform .15s}
+  .star-edit:hover{transform:scale(1.3)}
+  .card-link{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--t3);text-decoration:none;text-transform:uppercase;transition:color .3s}
+  .card:hover .card-link{color:var(--accent)}
+
+  /* ===== 侧滑面板 ===== */
+  .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+  .overlay.active{opacity:1;pointer-events:all}
+  .side-panel{position:fixed;top:0;right:-520px;width:520px;max-width:92vw;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:201;transition:right .4s cubic-bezier(.25,.46,.45,.94);overflow-y:auto;padding:48px 36px;backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2)}
+  .side-panel.active{right:0}
+  .panel-close{position:absolute;top:20px;right:20px;width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--t2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s}
+  .panel-close:hover{border-color:var(--accent);color:var(--accent)}
+  .panel-icon{width:72px;height:72px;border-radius:16px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:20px;border:1px solid rgba(212,165,165,0.12);overflow:hidden}
+  .panel-icon img{width:44px;height:44px;object-fit:contain}
+  .panel-name{font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+  .panel-url{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);margin-bottom:16px;word-break:break-all}
+  .panel-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .panel-stars{margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .panel-stars .label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase}
+  .panel-section{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin:24px 0 12px}
+  .panel-notes{font-size:14px;color:var(--t2);line-height:1.8}
+  .panel-notes textarea{width:100%;min-height:120px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-family:'Inter',sans-serif;font-size:14px;line-height:1.8;resize:vertical;outline:none;display:block}
+  .panel-notes textarea:focus{border-color:var(--accent)}
+  .panel-actions{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}
+  .p-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;text-decoration:none;transition:all .3s}
+  .p-btn-primary{border:1px solid var(--accent);background:transparent;color:var(--accent)}
+  .p-btn-primary:hover{background:var(--accent-dim)}
+  .p-btn-secondary{border:1px solid var(--border);background:transparent;color:var(--t2)}
+  .p-btn-secondary:hover{border-color:var(--t2);color:var(--t1)}
+  .p-btn-danger{border:1px solid rgba(239,68,68,0.3);background:transparent;color:var(--danger)}
+  .p-btn-danger:hover{background:rgba(239,68,68,0.1)}
+
+  /* ===== 密码模态框（全局） ===== */
+  .pw-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(8px)}
+  .pw-modal.active{opacity:1;pointer-events:all}
+  .pw-modal-box{background:var(--surface);border:1px solid var(--border-h);border-radius:16px;padding:36px;width:380px;max-width:90vw;text-align:center;transform:scale(.95);transition:transform .3s;backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2)}
+  .pw-modal.active .pw-modal-box{transform:scale(1)}
+  .pw-modal-icon{font-size:40px;margin-bottom:16px}
+  .pw-modal-title{font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t1);margin-bottom:8px}
+  .pw-modal-desc{font-size:13px;color:var(--t3);margin-bottom:24px;line-height:1.5}
+  .pw-modal-input{width:100%;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:14px;outline:none;text-align:center;letter-spacing:2px;transition:border-color .3s}
+  .pw-modal-input:focus{border-color:var(--accent)}
+  .pw-modal-input.error{animation:shake .4s ease;border-color:var(--danger)}
+  .pw-modal-submit{margin-top:16px;padding:12px 32px;border:1px solid var(--accent);border-radius:8px;background:transparent;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+  .pw-modal-submit:hover{background:var(--accent-dim)}
+  .pw-modal-msg{font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:12px;letter-spacing:.5px}
+  .pw-modal-msg.err{color:var(--danger)}
+  .pw-modal-close{margin-top:20px;padding:6px 16px;border:none;background:transparent;color:var(--t3);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;letter-spacing:1px;transition:color .2s}
+  .pw-modal-close:hover{color:var(--t2)}
+
+  /* ===== 对比模态 ===== */
+  .compare-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:250;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+  .compare-modal.active{opacity:1;pointer-events:all}
+  .compare-content{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:36px;max-width:90vw;max-height:85vh;overflow-y:auto;width:900px;backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2)}
+  .compare-content h2{font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:24px;color:var(--accent)}
+  .compare-grid{display:grid;gap:20px}
+  .compare-grid.cols-2{grid-template-columns:1fr 1fr}
+  .compare-grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+  .compare-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px}
+  .compare-item .ci-icon{font-size:32px;margin-bottom:12px}
+  .compare-item .ci-name{font-size:16px;font-weight:700;text-transform:uppercase;margin-bottom:8px}
+  .compare-item .ci-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .compare-item .ci-row:last-child{border:none}
+  .compare-item .ci-label{color:var(--t3);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase}
+  .compare-item .ci-val{color:var(--t2);text-align:right;max-width:60%}
+  .compare-close{margin-top:24px;text-align:center}
+  .compare-close button{padding:10px 28px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--t2);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;transition:all .2s}
+  .compare-close button:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* ===== 空状态 ===== */
+  .empty-state{text-align:center;padding:80px 20px;color:var(--t3)}
+  .empty-state .icon{font-size:48px;margin-bottom:16px}
+  .empty-state p{font-size:14px}
+
+  /* ===== 方案标签 ===== */
+  .plan-badge{position:fixed;bottom:24px;left:24px;z-index:50;padding:10px 20px;background:rgba(212,165,165,0.1);border:1px solid var(--accent);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--accent);text-transform:uppercase}
+
+  /* ===== Toast ===== */
+  .toast{position:fixed;top:60px;right:24px;z-index:400;padding:12px 20px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.5px;transform:translateX(120%);transition:transform .3s ease;max-width:360px}
+  .toast.show{transform:translateX(0)}
+  .toast.success{background:rgba(34,197,94,0.15);border:1px solid var(--green);color:var(--green)}
+  .toast.error{background:rgba(239,68,68,0.15);border:1px solid var(--danger);color:var(--danger)}
+  .toast.info{background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent)}
+
+  @media(max-width:768px){
+    nav{padding:12px 20px}
+    .nav-links{display:none}
+    main{padding:100px 20px 60px}
+    body.edit-active main{padding-top:128px}
+    .hero{flex-direction:column;gap:24px}
+    .hero-aside{width:100%;flex-direction:row;flex-wrap:wrap}
+    .quick-add{flex:1;min-width:140px}
+    .stats-card{flex:1;min-width:140px}
+    .card-grid{grid-template-columns:1fr}
+    .compare-grid.cols-2,.compare-grid.cols-3{grid-template-columns:1fr}
+  }
+
+  /* ===== 浅色主题 ===== */
+  body.light-theme{--bg:#F4F1ED;--bg-edit:#edeae6;--surface:rgba(255,255,255,0.45);--surface-h:rgba(255,255,255,0.6);--card:rgba(255,255,255,0.4);--card-h:rgba(255,255,255,0.55);--border:rgba(26,26,27,0.08);--border-h:rgba(212,165,165,0.35);--t1:#1A1A1B;--t2:#5a5652;--t3:#8a8682;--accent:#b07070;--accent-dim:rgba(176,112,112,0.1);--accent-glow:rgba(176,112,112,0.2);--green:#16a34a;--gold:#b8860b;--blue:#4a7fd4;--danger:#d44}
+  body.light-theme .card{box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.3),0 2px 12px rgba(26,26,27,0.06)}
+  body.light-theme .card:hover{box-shadow:inset 0 1px 0 0 rgba(255,255,255,0.3),0 8px 30px rgba(26,26,27,0.1)}
+  body.light-theme .side-panel{backdrop-filter:blur(20px)}
+  body.light-theme .add-card{backdrop-filter:blur(20px)}
+  body.light-theme .pw-modal-box{backdrop-filter:blur(20px)}
+  body.light-theme .compare-content{backdrop-filter:blur(20px)}
+  body.light-theme .edit-banner{background:rgba(176,112,112,0.08);border-bottom:1px solid rgba(176,112,112,0.15)}
+  body.light-theme .edit-banner span{color:var(--accent)}
+  body.light-theme .stars .star-f{color:var(--gold)}
+  body.light-theme .stars .star-e{color:rgba(26,26,27,0.15)}
+  body.light-theme .logo-badge{background:var(--accent);color:#fff}
+  body.light-theme .quick-add{background:rgba(255,255,255,0.5)}
+  body.light-theme .stats-card{background:rgba(255,255,255,0.5)}
+  body.light-theme .toolbar{background:rgba(244,241,237,0.5)}
+  body.light-theme .filter-bar{background:rgba(244,241,237,0.5)}
+  body.light-theme .pill{border-color:var(--border);color:var(--t2)}
+  body.light-theme .pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  body.light-theme .tag{background:var(--accent-dim)}
+  body.light-theme .search-input{background:rgba(255,255,255,0.6);border-color:var(--border);color:var(--t1)}
+  body.light-theme .search-input::placeholder{color:var(--t3)}
+  body.light-theme .last-used.today{color:var(--green);background:rgba(22,163,74,0.08)}
+  body.light-theme .last-used.recent{color:var(--accent);background:var(--accent-dim)}
+  body.light-theme .last-used.soon{color:var(--gold);background:rgba(184,134,11,0.08)}
+  body.light-theme .last-used.long-ago{color:var(--t3);background:rgba(26,26,27,0.03)}
+  body.light-theme .last-used.never{color:var(--t3);background:rgba(26,26,27,0.02)}
+  body.light-theme .nav-icon-btn{color:var(--t2)}
+  body.light-theme .nav-icon-btn:hover{color:var(--t1)}
+  body.light-theme .add-input-zone{border-color:var(--border)}
+  body.light-theme .add-input-zone:hover{border-color:var(--accent)}
+  body.light-theme .add-preview{background:rgba(255,255,255,0.4)}
+  body.light-theme .panel-section{color:var(--t3)}
+  body.light-theme .panel-notes textarea{background:rgba(255,255,255,0.4);border-color:var(--border);color:var(--t1)}
+  body.light-theme .p-btn-primary{border-color:var(--accent);color:var(--accent)}
+  body.light-theme .p-btn-secondary{border-color:var(--border);color:var(--t2)}
+  body.light-theme .p-btn-danger{border-color:var(--danger);color:var(--danger)}
+  body.light-theme .empty-state p{color:var(--t3)}
+  body.light-theme .toast{background:rgba(244,241,237,0.95);color:var(--t1);border:1px solid var(--border);box-shadow:0 4px 20px rgba(26,26,27,0.08)}
+  body.light-theme .overlay{background:rgba(244,241,237,0.5)}
+  body.light-theme .add-modal{background:rgba(244,241,237,0.5)}
+  body.light-theme .pw-modal{background:rgba(244,241,237,0.6)}
+  body.light-theme .compare-modal{background:rgba(244,241,237,0.6)}
+  body.light-theme .star{background:rgba(26,26,27,0.15)}
+</style>
+</head>
+<body>
+
+<div id="starfield"></div>
+<div id="supernova"></div>
+<div class="nova-quote" id="novaQuote"></div>
+
+<!-- 编辑模式横幅 -->
+<div id="editBanner">
+  <span class="dot"></span>
+  <span>◉ 编辑模式 — 所有卡片可编辑</span>
+  <button class="exit-btn" onclick="exitEditMode()">退出</button>
+</div>
+
+<!-- 弹出式添加卡片 -->
+<div class="add-modal" id="addModal" onclick="if(event.target===this)closeAddModal()">
+  <div class="add-card">
+    <div class="add-card-header">
+      <h3>＋ 添加新工具</h3>
+      <button class="add-card-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="add-card-body">
+      <div class="add-input-zone" id="addInputZone">
+        <div class="ai-icon">📎</div>
+        <div class="ai-text">粘贴或拖拽网址到此处</div>
+        <div class="ai-hint">支持：chat.openai.com, claude.ai, midjourney.com 等</div>
+        <input type="text" id="addUrlInput" placeholder="https://...">
+      </div>
+      <div class="add-preview" id="addPreview" style="display:none">
+        <div class="add-preview-header">预览</div>
+        <div class="add-preview-content">
+          <div class="add-preview-icon" id="previewIcon"></div>
+          <div class="add-preview-info">
+            <div class="add-preview-name" id="previewName"></div>
+            <div class="add-preview-url" id="previewUrl"></div>
+            <div class="add-preview-tags" id="previewTags"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="add-card-footer">
+      <button class="add-btn-cancel" onclick="closeAddModal()">取消</button>
+      <button class="add-btn-confirm" id="addConfirmBtn" onclick="confirmAddTool()" disabled>添加到收藏</button>
+    </div>
+  </div>
+</div>
+
+<!-- 密码模态框（全局唯一入口） -->
+<div class="pw-modal" id="pwModal">
+  <div class="pw-modal-box">
+    <div class="pw-modal-icon">🔒</div>
+    <div class="pw-modal-title">需要身份验证</div>
+    <div class="pw-modal-desc">输入密码以解锁编辑模式。<br>默认密码：<span style="color:var(--accent)">explorer</span></div>
+    <input type="password" class="pw-modal-input" id="pwModalInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')verifyPw()">
+    <br>
+    <button class="pw-modal-submit" onclick="verifyPw()">解锁 →</button>
+    <div class="pw-modal-msg" id="pwModalMsg"></div>
+    <button class="pw-modal-close" onclick="closePwModal()">取消</button>
+  </div>
+</div>
+
+<!-- 导航栏 -->
+<nav id="navbar">
+  <a class="logo" id="logoBtn" href="#">
+    <div class="logo-badge" id="logoBadge">exp</div>
+    <span class="logo-text">Explorer</span>
+  </a>
+  <div class="nav-right">
+    <button class="nav-icon-btn" id="lockBtn" onclick="openPwModal()" title="Edit Mode">🔒</button>
+    <button class="nav-icon-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme">☀</button>
+  </div>
+</nav>
+
+<main>
+  <div class="hero">
+    <div class="hero-content">
+      <h1>MY DIGITAL COMPASS<br>IN THE <span class="accent">AI</span> UNIVERSE</h1>
+      <p>精心收集的 AI 工具集，助力日常探索。每一个都经过测试、评分，并附有个人使用心得。</p>
+    </div>
+    <div class="hero-aside">
+      <div class="quick-add" id="quickAddBtn" onclick="handleQuickAdd()">
+        <div class="qa-icon" id="qaIcon">＋</div>
+        <div class="qa-title" id="qaTitle">添加工具</div>
+        <div class="qa-desc" id="qaDesc">点击解锁后添加</div>
+      </div>
+      <div class="stats-card">
+        <div class="sc-row"><span class="sc-label">总计</span><span class="sc-val" id="statTotal">0</span></div>
+        <div class="sc-row"><span class="sc-label">收藏</span><span class="sc-val accent" id="statFav">0</span></div>
+        <div class="sc-row"><span class="sc-label">草稿</span><span class="sc-val" id="statDraft">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <span class="s-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="搜索工具...">
+    </div>
+    <div class="toolbar-actions">
+      <button class="tb-btn" id="favFilterBtn" onclick="toggleFavFilter()">★ 收藏</button>
+      <button class="tb-btn" id="draftFilterBtn" onclick="toggleDraftFilter()">◈ 草稿</button>
+    </div>
+  </div>
+
+  <div class="filter-bar" id="filterPills">
+    <button class="pill active" data-filter="all">全部</button>
+    <button class="pill" data-filter="text">文本生成</button>
+    <button class="pill" data-filter="image">图像生成</button>
+    <button class="pill" data-filter="code">代码辅助</button>
+    <button class="pill" data-filter="audio">音频</button>
+    <button class="pill" data-filter="video">视频</button>
+    <button class="pill" data-filter="productivity">效率工具</button>
+  </div>
+
+  <div class="card-grid" id="cardGrid"></div>
+</main>
+
+<!-- 对比浮动栏 -->
+<div id="compareBar">
+  <span class="cb-label">对比：</span>
+  <div class="cb-items" id="cbItems"></div>
+  <button class="cb-compare" onclick="openCompare()">开始对比 ↗</button>
+  <button class="cb-clear" onclick="clearCompare()">✕</button>
+</div>
+
+<!-- 侧滑面板 -->
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<div class="side-panel" id="sidePanel">
+  <button class="panel-close" onclick="closePanel()">✕</button>
+  <div id="panelContent"></div>
+</div>
+
+<!-- 对比模态 -->
+<div class="compare-modal" id="compareModal" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="compare-content" id="compareContent"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== SHA-256 =====
+async function sha256(msg) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ===== 标签中英文映射 =====
+const TAG_LABELS = {
+  'text': '文本生成', 'image': '图像生成', 'code': '代码辅助',
+  'audio': '音频', 'video': '视频', 'productivity': '效率工具'
+};
+const TAG_LABELS_REVERSE = {};
+Object.entries(TAG_LABELS).forEach(([k,v]) => TAG_LABELS_REVERSE[v] = k);
+
+// 所有可用标签（预设 + 用户自定义）
+const PRESET_TAGS = ['text','image','code','audio','video','productivity'];
+let customTags = JSON.parse(localStorage.getItem('explorer_custom_tags') || '[]');
+
+function getAllTags() { return [...PRESET_TAGS, ...customTags]; }
+function getTagLabel(tag) { return TAG_LABELS[tag] || tag; }
+
+// ===== 域名映射表 =====
+const DOMAIN_MAP = {
+  'chat.openai.com': { name:'ChatGPT', tags:['text','productivity'], desc:'强大的对话式AI助手' },
+  'claude.ai': { name:'Claude', tags:['text','code'], desc:'Anthropic出品的AI助手' },
+  'midjourney.com': { name:'Midjourney', tags:['image'], desc:'AI图像生成工具' },
+  'openai.com': { name:'OpenAI', tags:['text','image'], desc:'OpenAI官方平台' },
+  'github.com': { name:'GitHub Copilot', tags:['code'], desc:'AI编程助手' },
+  'cursor.sh': { name:'Cursor', tags:['code'], desc:'AI代码编辑器' },
+  'stability.ai': { name:'Stable Diffusion', tags:['image'], desc:'开源AI图像生成' },
+  'elevenlabs.io': { name:'ElevenLabs', tags:['audio'], desc:'AI语音合成' },
+  'suno.com': { name:'Suno', tags:['audio'], desc:'AI音乐生成' },
+  'runwayml.com': { name:'Runway', tags:['video'], desc:'AI视频生成' },
+  'notion.so': { name:'Notion AI', tags:['productivity'], desc:'AI知识管理' },
+  'perplexity.ai': { name:'Perplexity', tags:['text','productivity'], desc:'AI搜索引擎' },
+  'v0.dev': { name:'v0.dev', tags:['code'], desc:'AI前端组件生成' },
+  'klingai.com': { name:'Kling AI', tags:['video'], desc:'AI视频生成' },
+  'gamma.app': { name:'Gamma', tags:['productivity'], desc:'AI演示文稿' },
+  'bolt.new': { name:'Bolt.new', tags:['code'], desc:'AI全栈应用生成' },
+  'ideogram.ai': { name:'Ideogram', tags:['image'], desc:'AI图像生成' },
+  'lumalabs.ai': { name:'Luma AI', tags:['video','image'], desc:'AI 3D生成' },
+  'kimi.moonshot.cn': { name:'Kimi', tags:['text','productivity'], desc:'长文本AI助手' },
+  'codeium.com': { name:'Windsurf', tags:['code'], desc:'AI代码编辑器' },
+  'gemini.google.com': { name:'Gemini', tags:['text','productivity'], desc:'Google AI助手' },
+  'huggingface.co': { name:'HuggingFace', tags:['code','text'], desc:'AI模型社区' },
+  'replicate.com': { name:'Replicate', tags:['image','audio'], desc:'AI模型运行平台' },
+  'canva.com': { name:'Canva AI', tags:['image','productivity'], desc:'AI设计工具' },
+  'figma.com': { name:'Figma AI', tags:['image','productivity'], desc:'AI设计辅助' },
+};
+
+// ===== 默认数据 =====
+const DEFAULT_TOOLS = [
+  { id:1, name:"ChatGPT", icon:"https://www.google.com/s2/favicons?domain=chat.openai.com&sz=64", url:"https://chat.openai.com", tags:["文本生成","效率工具"], desc:"强大的对话式AI助手，支持文本生成、代码调试和知识问答", rating:5, notes:"我的日常AI助手，几乎每天都会使用。主要用于文案撰写、代码调试、头脑风暴和翻译。GPT-4o 的多模态能力让它在处理复杂任务时非常出色。", fav:true, draft:false, heatmap:[3,5,4,5,3,4,5,2,4,5,3,4,5,4,3,5,4,3,2,4,5,3,4,5,4,3,5,4,3,4] },
+  { id:2, name:"Claude", icon:"https://www.google.com/s2/favicons?domain=claude.ai&sz=64", url:"https://claude.ai", tags:["文本生成","代码辅助"], desc:"Anthropic 出品的AI助手，擅长长文本分析和编程", rating:5, notes:"在长文本分析和代码审查方面表现优异。200K的上下文窗口让它能处理整本书或大型代码库。", fav:true, draft:false, heatmap:[2,3,4,3,5,4,3,2,4,5,3,4,2,3,4,5,3,4,3,2,4,3,5,4,3,4,2,3,4,5] },
+  { id:3, name:"Midjourney", icon:"https://www.google.com/s2/favicons?domain=midjourney.com&sz=64", url:"https://midjourney.com", tags:["图像生成"], desc:"AI图像生成工具，以艺术性和风格控制著称", rating:5, notes:"最喜欢的AI绘图工具，风格控制精准。V6版本在写实和艺术风格之间取得了很好的平衡。", fav:false, draft:false, heatmap:[1,2,3,2,4,3,2,1,3,4,2,3,1,2,3,4,2,3,2,1,3,2,4,3,2,3,1,2,3,4] },
+  { id:4, name:"DALL·E 3", icon:"https://www.google.com/s2/favicons?domain=openai.com&sz=64", url:"https://openai.com/dall-e-3", tags:["图像生成"], desc:"OpenAI的图像生成模型，与ChatGPT深度集成", rating:4, notes:"与ChatGPT的集成是最大优势，可以用自然语言精确描述想要的图像。", fav:false, draft:false, heatmap:[0,1,2,1,2,3,2,1,2,3,1,2,0,1,2,3,1,2,1,0,2,1,3,2,1,2,0,1,2,3] },
+  { id:5, name:"GitHub Copilot", icon:"https://www.google.com/s2/favicons?domain=github.com&sz=64", url:"https://github.com/features/copilot", tags:["代码辅助"], desc:"AI编程助手，实时代码补全和建议", rating:5, notes:"编程效率提升神器。在写重复性代码、学习新框架时特别有用。", fav:true, draft:false, heatmap:[5,4,5,4,5,3,4,5,4,3,5,4,5,4,3,5,4,5,4,3,5,4,5,4,3,4,5,4,5,3] },
+  { id:6, name:"Cursor", icon:"https://www.google.com/s2/favicons?domain=cursor.sh&sz=64", url:"https://cursor.sh", tags:["代码辅助"], desc:"AI驱动的代码编辑器，深度集成AI编程能力", rating:5, notes:"基于VS Code的AI编辑器，体验非常流畅。Composer功能可以一次性修改多个文件。", fav:false, draft:false, heatmap:[4,5,4,5,3,4,5,4,5,3,4,5,4,5,3,4,5,4,5,3,4,5,4,3,4,5,4,5,3,4] },
+  { id:7, name:"Stable Diffusion", icon:"https://www.google.com/s2/favicons?domain=stability.ai&sz=64", url:"https://stability.ai", tags:["图像生成"], desc:"开源AI图像生成模型，高度可定制", rating:4, notes:"开源的优势在于完全可控。通过ComfyUI可以搭建复杂的工作流。", fav:false, draft:false, heatmap:[1,0,2,1,3,2,1,0,2,3,1,2,1,0,2,3,1,2,1,0,2,1,3,2,1,2,0,1,2,3] },
+  { id:8, name:"ElevenLabs", icon:"https://www.google.com/s2/favicons?domain=elevenlabs.io&sz=64", url:"https://elevenlabs.io", tags:["音频"], desc:"AI语音合成，支持多语言和声音克隆", rating:4, notes:"语音合成质量目前是行业顶尖。声音克隆功能只需几秒音频样本。", fav:false, draft:false, heatmap:[0,1,0,2,1,0,1,2,0,1,0,2,1,0,1,2,0,1,0,2,1,0,1,2,0,1,0,2,1,0] },
+  { id:9, name:"Suno", icon:"https://www.google.com/s2/favicons?domain=suno.com&sz=64", url:"https://suno.com", tags:["音频"], desc:"AI音乐生成，从文本描述创建完整歌曲", rating:4, notes:"用AI创作音乐的门槛大幅降低。V3.5版本生成的歌曲质量令人惊叹。", fav:false, draft:false, heatmap:[0,0,1,2,1,0,0,1,2,1,0,0,1,2,1,0,0,1,2,1,0,0,1,2,1,0,0,1,2,1] },
+  { id:10, name:"Runway", icon:"https://www.google.com/s2/favicons?domain=runwayml.com&sz=64", url:"https://runwayml.com", tags:["视频"], desc:"AI视频生成和编辑平台", rating:4, notes:"Gen-2的视频生成能力在持续进步。运动画笔和去除功能非常实用。", fav:false, draft:false, heatmap:[0,1,0,1,2,1,0,1,0,1,2,1,0,1,0,1,2,1,0,1,0,1,2,1,0,1,0,1,2,1] },
+  { id:11, name:"Notion AI", icon:"https://www.google.com/s2/favicons?domain=notion.so&sz=64", url:"https://notion.so", tags:["效率工具"], desc:"集成在Notion中的AI写作和知识管理助手", rating:4, notes:"与Notion工作流无缝集成。自动总结会议记录、生成大纲等功能非常实用。", fav:false, draft:false, heatmap:[2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3] },
+  { id:12, name:"Perplexity", icon:"https://www.google.com/s2/favicons?domain=perplexity.ai&sz=64", url:"https://perplexity.ai", tags:["文本生成","效率工具"], desc:"AI驱动的搜索引擎，提供带引用的精准答案", rating:5, notes:"替代传统搜索引擎的最佳选择。每个答案都附带来源引用，方便验证。", fav:true, draft:false, heatmap:[4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5] },
+  { id:13, name:"v0.dev", icon:"https://www.google.com/s2/favicons?domain=v0.dev&sz=64", url:"https://v0.dev", tags:["代码辅助"], desc:"Vercel的AI前端组件生成工具", rating:4, notes:"快速生成前端UI组件的利器。生成的代码质量不错，可以直接集成到项目中。", fav:false, draft:false, heatmap:[1,2,1,2,3,2,1,2,1,2,3,2,1,2,1,2,3,2,1,2,1,2,3,2,1,2,1,2,3,2] },
+  { id:14, name:"Kling AI", icon:"https://www.google.com/s2/favicons?domain=klingai.com&sz=64", url:"https://klingai.com", tags:["视频"], desc:"快手推出的AI视频生成模型", rating:4, notes:"国产AI视频生成中的佼佼者。在人物动作和场景一致性方面表现不错。", fav:false, draft:false, heatmap:[0,1,2,1,2,1,0,1,2,1,2,1,0,1,2,1,2,1,0,1,2,1,2,1,0,1,2,1,2,1] },
+  { id:15, name:"Gamma", icon:"https://www.google.com/s2/favicons?domain=gamma.app&sz=64", url:"https://gamma.app", tags:["效率工具"], desc:"AI驱动的演示文稿和文档生成工具", rating:3, notes:"快速生成PPT和文档。AI生成的布局和配色比传统模板更灵活。但细节仍需手动调整。", fav:false, draft:false, heatmap:[0,0,1,0,1,0,0,1,0,1,0,0,1,0,1,0,0,1,0,1,0,0,1,0,1,0,0,1,0,1] },
+  { id:16, name:"Bolt.new", icon:"https://www.google.com/s2/favicons?domain=bolt.new&sz=64", url:"https://bolt.new", tags:["代码辅助"], desc:"AI全栈应用生成平台，从描述到部署", rating:4, notes:"从自然语言描述直接生成全栈应用。适合快速验证想法和创建MVP。", fav:false, draft:false, heatmap:[1,2,1,3,2,1,2,3,1,2,1,3,2,1,2,3,1,2,1,3,2,1,2,3,1,2,1,3,2,1] },
+  { id:17, name:"Ideogram", icon:"https://www.google.com/s2/favicons?domain=ideogram.ai&sz=64", url:"https://ideogram.ai", tags:["图像生成"], desc:"擅长文字渲染的AI图像生成工具", rating:4, notes:"在图像中渲染文字的能力是所有工具中最强的。适合制作海报、logo。", fav:false, draft:false, heatmap:[0,1,0,1,2,1,0,1,0,1,2,1,0,1,0,1,2,1,0,1,0,1,2,1,0,1,0,1,2,1] },
+  { id:18, name:"Whisper", icon:"https://www.google.com/s2/favicons?domain=openai.com&sz=64", url:"https://openai.com/whisper", tags:["音频"], desc:"OpenAI开源的语音识别模型", rating:4, notes:"开源且免费的语音转文字方案。多语言识别准确率高。", fav:false, draft:false, heatmap:[0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1] },
+  { id:19, name:"Luma AI", icon:"https://www.google.com/s2/favicons?domain=lumalabs.ai&sz=64", url:"https://lumalabs.ai", tags:["视频","图像生成"], desc:"AI 3D生成和视频创作平台", rating:3, notes:"Dream Machine的视频生成质量不错。3D生成功能适合游戏和AR应用开发。", fav:false, draft:false, heatmap:[0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0] },
+  { id:20, name:"Kimi", icon:"https://www.google.com/s2/favicons?domain=kimi.moonshot.cn&sz=64", url:"https://kimi.moonshot.cn", tags:["文本生成","效率工具"], desc:"月之暗面推出的长文本AI助手", rating:4, notes:"国产AI中的长文本处理能手。200万字超长上下文，中文理解能力出色。", fav:false, draft:false, heatmap:[2,3,2,3,4,3,2,3,2,3,4,3,2,3,2,3,4,3,2,3,2,3,4,3,2,3,2,3,4,3] },
+  { id:21, name:"ComfyUI", icon:"https://www.google.com/s2/favicons?domain=comfyui.com&sz=64", url:"https://comfyui.com", tags:["图像生成"], desc:"节点式AI图像生成工作流平台", rating:4, notes:"Stable Diffusion的最佳搭档。节点式工作流让复杂图像生成变得可控和可复现。", fav:false, draft:false, heatmap:[1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2] },
+  { id:22, name:"Windsurf", icon:"https://www.google.com/s2/favicons?domain=codeium.com&sz=64", url:"https://codeium.com/windsurf", tags:["代码辅助"], desc:"Codeium推出的AI代码编辑器", rating:4, notes:"与Cursor类似的AI编辑器选择。Cascade流式编辑功能体验流畅。", fav:false, draft:false, heatmap:[1,2,3,2,3,2,1,2,3,2,3,2,1,2,3,2,3,2,1,2,3,2,3,2,1,2,3,2,3,2] },
+];
+
+// ===== 状态 =====
+let tools = [];
+let currentFilter = 'all';
+let currentSearch = '';
+let showFavOnly = false;
+let showDraftOnly = false;
+let isEditMode = false;
+let compareList = [];
+let logoClicks = 0;
+let logoClickTimer = null;
+let pwFailCount = 0;
+let pwLockUntil = 0;
+let currentPanelId = null;
+
+// ===== 初始化 =====
+function init() {
+  const saved = localStorage.getItem('explorer_tools');
+  if (saved) {
+    try { tools = JSON.parse(saved); } catch(e) { tools = JSON.parse(JSON.stringify(DEFAULT_TOOLS)); }
+  } else {
+    tools = JSON.parse(JSON.stringify(DEFAULT_TOOLS));
+  }
+  customTags = JSON.parse(localStorage.getItem('explorer_custom_tags') || '[]');
+  createStars();
+  setupAddModal();
+  renderCards();
+  updateStats();
+  updateQuickAddBtn();
+  refreshFilterPills();
+}
+
+function save() { localStorage.setItem('explorer_tools', JSON.stringify(tools)); }
+
+// ===== 星空 =====
+function createStars() {
+  const c = document.getElementById('starfield');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;--dur:${2+Math.random()*4}s;animation-delay:${Math.random()*4}s;width:${Math.random()>.7?3:2}px;height:${Math.random()>.7?3:2}px;${Math.random()>.8?'background:rgba(212,165,165,0.3)':''}`;
+    c.appendChild(s);
+  }
+}
+
+// ===== 鼠标引力场 + 3D倾斜 =====
+document.addEventListener('mousemove', e => {
+  const cards = document.querySelectorAll('.card');
+  cards.forEach(card => {
+    const rect = card.getBoundingClientRect();
+    const cx = rect.left + rect.width/2;
+    const cy = rect.top + rect.height/2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 300) {
+      const rotateY = (dx / 300) * 8;
+      const rotateX = -(dy / 300) * 8;
+      card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+    } else {
+      card.style.transform = '';
+    }
+  });
+  const stars = document.querySelectorAll('.star');
+  stars.forEach(star => {
+    const sx = parseFloat(star.style.left);
+    const sy = parseFloat(star.style.top);
+    const px = (e.clientX / window.innerWidth) * 100;
+    const py = (e.clientY / window.innerHeight) * 100;
+    const d = Math.sqrt((sx-px)**2 + (sy-py)**2);
+    if (d < 15) {
+      const pull = (15 - d) / 15 * 3;
+      star.style.transform = `translate(${(px-sx)*pull*0.3}px, ${(py-sy)*pull*0.3}px)`;
+    } else {
+      star.style.transform = '';
+    }
+  });
+});
+
+// ===== 最后使用时间计算 =====
+function getLastUsed(hm) {
+  if (!hm || !hm.length) return { text:'NEVER USED', icon:'⊘', cls:'never' };
+  // 从末尾倒推，找到最后一个 > 0 的位置
+  let daysAgo = 0;
+  for (let i = hm.length - 1; i >= 0; i--) {
+    if (hm[i] > 0) { daysAgo = hm.length - 1 - i; break; }
+    if (i === 0) daysAgo = -1; // 全部为0
+  }
+  if (daysAgo === -1) return { text:'NEVER USED', icon:'⊘', cls:'never' };
+  if (daysAgo === 0) return { text:'TODAY', icon:'●', cls:'today' };
+  if (daysAgo === 1) return { text:'YESTERDAY', icon:'◐', cls:'today' };
+  if (daysAgo <= 3) return { text:`${daysAgo} DAYS AGO`, icon:'◑', cls:'recent' };
+  if (daysAgo <= 7) return { text:`${daysAgo} DAYS AGO`, icon:'○', cls:'soon' };
+  if (daysAgo <= 14) return { text:`${Math.floor(daysAgo/7)} WEEKS AGO`, icon:'◌', cls:'long-ago' };
+  if (daysAgo <= 30) return { text:`${Math.floor(daysAgo/7)} WEEKS AGO`, icon:'◌', cls:'long-ago' };
+  return { text:`${Math.floor(daysAgo/30)} MONTHS AGO`, icon:'○', cls:'long-ago' };
+}
+
+// ===== 渲染 =====
+function renderStars(r, editable) {
+  let h = '';
+  for (let i = 1; i <= 5; i++) {
+    const cls = i <= r ? 'star-f' : 'star-e';
+    const editCls = editable ? 'star-edit' : '';
+    h += `<span class="${cls} ${editCls}" ${editable ? `onclick="event.stopPropagation();setRating(${currentPanelId},${i})"` : ''}>★</span>`;
+  }
+  return h;
+}
+
+function getFiltered() {
+  return tools.filter(t => {
+    if (showFavOnly && !t.fav) return false;
+    if (showDraftOnly && !t.draft) return false;
+    const filterLabel = TAG_LABELS[currentFilter] || currentFilter;
+    const mf = currentFilter === 'all' || t.tags.includes(currentFilter) || t.tags.includes(filterLabel);
+    const ms = currentSearch === '' || t.name.toLowerCase().includes(currentSearch) || t.desc.toLowerCase().includes(currentSearch) || t.tags.some(tg => tg.toLowerCase().includes(currentSearch));
+    return mf && ms;
+  });
+}
+
+function renderCards() {
+  const grid = document.getElementById('cardGrid');
+  const list = getFiltered();
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">🔭</div><p>NO TOOLS FOUND.</p></div>';
+    return;
+  }
+  list.sort((a,b) => (b.fav?1:0) - (a.fav?1:0));
+  grid.innerHTML = list.map(t => {
+    const lu = getLastUsed(t.heatmap);
+    return `
+    <div class="card ${t.fav?'favorited':''} ${t.draft?'draft':''}" data-id="${t.id}" ondblclick="event.stopPropagation();toggleFav(${t.id})">
+      ${t.draft ? '<div class="draft-badge">DRAFT</div>' : ''}
+      <div class="edit-hint">✏️</div>
+      <div class="compare-check ${compareList.includes(t.id)?'checked':''}" onclick="event.stopPropagation();toggleCompare(${t.id})">${compareList.includes(t.id)?'✓':''}</div>
+      <div class="card-icon">${t.icon.startsWith('http')?`<img src="${t.icon}" onerror="this.parentElement.textContent='${t.name[0]}'">`:t.icon}</div>
+      <div class="card-name">${t.name}</div>
+      <div class="card-desc">${t.desc}</div>
+      <div class="card-tags">${t.tags.map(tg=>`<span class="tag">${getTagLabel(tg)}</span>`).join('')}</div>
+      <div class="last-used ${lu.cls}">${lu.icon} ${lu.text}</div>
+      <div class="card-footer">
+        <div class="stars">${[1,2,3,4,5].map(i=>`<span class="${i<=t.rating?'star-f':'star-e'}">★</span>`).join('')}</div>
+        <a class="card-link" href="${t.url}" target="_blank" onclick="event.stopPropagation()">VISIT →</a>
+      </div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => openPanel(Number(card.dataset.id)));
+  });
+  updateStats();
+}
+
+// ===== 筛选 =====
+document.getElementById('filterPills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  currentFilter = pill.dataset.filter;
+  renderCards();
+});
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  currentSearch = e.target.value.toLowerCase().trim();
+  renderCards();
+});
+
+function toggleFavFilter() {
+  showFavOnly = !showFavOnly;
+  showDraftOnly = false;
+  document.getElementById('favFilterBtn').classList.toggle('active', showFavOnly);
+  document.getElementById('draftFilterBtn').classList.remove('active');
+  renderCards();
+}
+
+function toggleDraftFilter() {
+  showDraftOnly = !showDraftOnly;
+  showFavOnly = false;
+  document.getElementById('draftFilterBtn').classList.toggle('active', showDraftOnly);
+  document.getElementById('favFilterBtn').classList.remove('active');
+  renderCards();
+}
+
+function toggleFav(id) {
+  if (!isEditMode) return;
+  const t = tools.find(x => x.id === id);
+  if (t) { t.fav = !t.fav; save(); renderCards(); showToast(t.fav?'已添加到收藏':'已取消收藏','info'); }
+}
+
+// ===== 对比 =====
+function toggleCompare(id) {
+  const idx = compareList.indexOf(id);
+  if (idx > -1) compareList.splice(idx, 1);
+  else if (compareList.length < 3) compareList.push(id);
+  else { showToast('最多对比3个工具','error'); return; }
+  updateCompareBar();
+  renderCards();
+}
+
+function updateCompareBar() {
+  const bar = document.getElementById('compareBar');
+  const items = document.getElementById('cbItems');
+  if (compareList.length === 0) { bar.classList.remove('active'); return; }
+  bar.classList.add('active');
+  items.innerHTML = compareList.map(id => {
+    const t = tools.find(x => x.id === id);
+    return `<div class="cb-chip">${t?t.icon:''} ${t?t.name:''} <span class="remove" onclick="event.stopPropagation();toggleCompare(${id})">✕</span></div>`;
+  }).join('');
+}
+
+function clearCompare() { compareList = []; updateCompareBar(); renderCards(); }
+
+function openCompare() {
+  if (compareList.length < 2) { showToast('请至少选择2个工具','error'); return; }
+  const items = compareList.map(id => tools.find(x => x.id === id)).filter(Boolean);
+  const content = document.getElementById('compareContent');
+  content.innerHTML = `
+    <h2>◈ 工具对比</h2>
+    <div class="compare-grid cols-${items.length}">
+      ${items.map(t => {
+        const lu = getLastUsed(t.heatmap);
+        return `
+        <div class="compare-item">
+          <div class="ci-icon">${t.icon.startsWith('http')?`<img src="${t.icon}" style="width:32px;height:32px;object-fit:contain" onerror="this.outerHTML='${t.name[0]}'">`:t.icon}</div>
+          <div class="ci-name">${t.name}</div>
+          <div class="ci-row"><span class="ci-label">网址</span><span class="ci-val"><a href="${t.url}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:11px;word-break:break-all">${t.url}</a></span></div>
+          <div class="ci-row"><span class="ci-label">评分</span><span class="ci-val">${'★'.repeat(t.rating)}${'☆'.repeat(5-t.rating)}</span></div>
+          <div class="ci-row"><span class="ci-label">最后使用</span><span class="ci-val">${lu.icon} ${lu.text}</span></div>
+          <div class="ci-row"><span class="ci-label">标签</span><span class="ci-val">${t.tags.map(tg=>`<span class="tag" style="font-size:9px">${tg}</span>`).join(' ')}</span></div>
+          <div class="ci-row"><span class="ci-label">描述</span><span class="ci-val" style="font-size:12px">${t.desc}</span></div>
+          <div class="ci-row"><span class="ci-label">笔记</span><span class="ci-val" style="font-size:12px;line-height:1.5">${t.notes||'暂无笔记'}</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="compare-close"><button onclick="document.getElementById('compareModal').classList.remove('active')">关闭</button></div>
+  `;
+  document.getElementById('compareModal').classList.add('active');
+}
+
+// ===== 侧滑面板 =====
+function openPanel(id) {
+  currentPanelId = id;
+  const t = tools.find(x => x.id === id);
+  if (!t) return;
+  const editable = isEditMode;
+  const lu = getLastUsed(t.heatmap);
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-icon">${t.icon.startsWith('http')?`<img src="${t.icon}" onerror="this.parentElement.textContent='${t.name[0]}'">`:t.icon}</div>
+    <div class="panel-name">${t.name}</div>
+    <div class="panel-url"><a href="${t.url}" target="_blank" style="color:var(--accent);text-decoration:none">${t.url}</a></div>
+    <div class="panel-tags">${t.tags.map(tg=>`<span class="tag">${getTagLabel(tg)}</span>`).join('')}</div>
+    <div class="panel-stars">
+      <span class="label">RATING:</span>
+      <div>${renderStars(t.rating, editable)}</div>
+    </div>
+    <div class="last-used ${lu.cls}" style="margin-bottom:24px">${lu.icon} ${lu.text}</div>
+    ${editable ? `
+    <div class="panel-section">标签管理</div>
+    <div class="tag-editor">
+      <div class="tag-editor-header">已有标签（点击选择/取消）</div>
+      <div class="tag-editor-list" id="tagEditorList">
+        ${getAllTags().map(tag => `<span class="te-tag ${t.tags.includes(tag)?'selected':''}" onclick="toggleToolTag(${t.id},'${tag}')">${getTagLabel(tag)}</span>`).join('')}
+      </div>
+      <div class="tag-editor-header" style="margin-top:12px">自定义标签</div>
+      <div class="tag-editor-input">
+        <input type="text" id="customTagInput" placeholder="输入新标签..." onkeydown="if(event.key==='Enter')addCustomTag(${t.id})">
+        <button onclick="addCustomTag(${t.id})">添加</button>
+      </div>
+    </div>
+    ` : ''}
+    <div class="panel-section">使用笔记</div>
+    <div class="panel-notes">
+      ${editable
+        ? `<textarea id="notesArea">${(t.notes||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>`
+        : `<div>${t.notes||'<span style="color:var(--t3)">暂无笔记</span>'}</div>`
+      }
+    </div>
+    ${t.draft && editable ? `
+      <div class="panel-section">PUBLISH</div>
+      <button class="p-btn p-btn-primary" onclick="publishDraft(${t.id})">发布工具 ↗</button>
+    ` : ''}
+    <div class="panel-actions">
+      <a class="p-btn p-btn-primary" href="${t.url}" target="_blank">访问 →</a>
+      ${editable ? `
+        <button class="p-btn p-btn-secondary" onclick="saveNotes(${t.id})">保存笔记</button>
+        <button class="p-btn p-btn-danger" onclick="deleteTool(${t.id})">删除</button>
+      ` : ''}
+    </div>
+  `;
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('sidePanel').classList.add('active');
+}
+
+function closePanel() {
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('sidePanel').classList.remove('active');
+  currentPanelId = null;
+}
+
+// ===== 密码模态框（全局唯一入口） =====
+function openPwModal() {
+  if (isEditMode) { exitEditMode(); return; }
+  document.getElementById('pwModal').classList.add('active');
+  document.getElementById('pwModalInput').value = '';
+  document.getElementById('pwModalMsg').textContent = '';
+  document.getElementById('pwModalMsg').className = 'pw-modal-msg';
+  setTimeout(() => document.getElementById('pwModalInput').focus(), 200);
+}
+
+function closePwModal() {
+  document.getElementById('pwModal').classList.remove('active');
+}
+
+document.getElementById('pwModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closePwModal();
+});
+
+async function verifyPw() {
+  if (Date.now() < pwLockUntil) {
+    const sec = Math.ceil((pwLockUntil - Date.now()) / 1000);
+    showPwModalMsg(`LOCKED. TRY AGAIN IN ${sec}s.`, 'err');
+    return;
+  }
+  const input = document.getElementById('pwModalInput');
+  const hash = await sha256(input.value);
+  const storedHash = localStorage.getItem('explorer_pw_hash') || await sha256('explorer');
+  if (hash === storedHash) {
+    closePwModal();
+    enterEditMode();
+    showToast('编辑模式已开启 — 双击卡片可收藏，点击可编辑笔记和评分','success');
+  } else {
+    pwFailCount++;
+    input.classList.add('error');
+    setTimeout(() => input.classList.remove('error'), 400);
+    if (pwFailCount >= 3) {
+      pwLockUntil = Date.now() + 30000;
+      pwFailCount = 0;
+      showPwModalMsg('TOO MANY ATTEMPTS. LOCKED FOR 30S.', 'err');
+    } else {
+      showPwModalMsg(`ACCESS_DENIED. ${3-pwFailCount} ATTEMPTS LEFT.`, 'err');
+    }
+  }
+  input.value = '';
+}
+
+function showPwModalMsg(msg, cls) {
+  const el = document.getElementById('pwModalMsg');
+  el.textContent = msg;
+  el.className = 'pw-modal-msg ' + cls;
+}
+
+// ===== 快速添加按钮处理 =====
+function handleQuickAdd() {
+  if (!isEditMode) {
+    openPwModal();
+    showToast('粘贴或拖拽网址以添加新工具','info');
+  } else {
+    openAddModal();
+  }
+}
+
+// ===== 弹出式添加卡片 =====
+let pendingTool = null;
+
+function openAddModal() {
+  document.getElementById('addModal').classList.add('active');
+  document.getElementById('addUrlInput').value = '';
+  document.getElementById('addPreview').style.display = 'none';
+  document.getElementById('addConfirmBtn').disabled = true;
+  pendingTool = null;
+  setTimeout(() => document.getElementById('addUrlInput').focus(), 200);
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('active');
+  pendingTool = null;
+}
+
+function confirmAddTool() {
+  if (!pendingTool) return;
+  tools.push(pendingTool);
+  save();
+  renderCards();
+  closeAddModal();
+  showToast(`"${pendingTool.name}" 已添加到收藏！`,'success');
+}
+
+// ===== 添加卡片输入处理 =====
+function setupAddModal() {
+  const zone = document.getElementById('addInputZone');
+  const input = document.getElementById('addUrlInput');
+
+  input.addEventListener('input', () => {
+    if (input.value.trim()) processAddUrl(input.value.trim());
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && pendingTool) confirmAddTool();
+    if (e.key === 'Escape') closeAddModal();
+  });
+
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const text = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list');
+    if (text) {
+      input.value = text.trim();
+      processAddUrl(text.trim());
+    }
+  });
+}
+
+function processAddUrl(rawUrl) {
+  let url = rawUrl;
+  if (!url.startsWith('http')) url = 'https://' + url;
+  let domain = '';
+  try { domain = new URL(url).hostname.replace(/^www\./, ''); } catch(e) {
+    document.getElementById('addPreview').style.display = 'none';
+    document.getElementById('addConfirmBtn').disabled = true;
+    return;
+  }
+
+  const mapped = DOMAIN_MAP[domain];
+  const newId = tools.length > 0 ? Math.max(...tools.map(t => t.id)) + 1 : 1;
+  
+  // 获取 favicon
+  const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  
+  pendingTool = {
+    id: newId,
+    name: mapped ? mapped.name : domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1),
+    icon: faviconUrl,
+    url: url,
+    tags: mapped ? [...mapped.tags] : ['uncategorized'],
+    desc: mapped ? mapped.desc : 'New tool — add description',
+    rating: 0,
+    notes: '',
+    fav: false,
+    draft: true,
+    heatmap: new Array(30).fill(0)
+  };
+
+  // 显示预览
+  document.getElementById('previewIcon').innerHTML = `<img src="${faviconUrl}" onerror="this.parentElement.textContent='${pendingTool.name[0]}'">`;
+  document.getElementById('previewName').textContent = pendingTool.name;
+  document.getElementById('previewUrl').textContent = url;
+  document.getElementById('previewTags').innerHTML = pendingTool.tags.map(t => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('addPreview').style.display = 'block';
+  document.getElementById('addConfirmBtn').disabled = false;
+}
+
+// ===== 更新统计 =====
+function updateStats() {
+  const total = tools.length;
+  const fav = tools.filter(t => t.fav).length;
+  const draft = tools.filter(t => t.draft).length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statFav').textContent = fav;
+  document.getElementById('statDraft').textContent = draft;
+}
+
+// ===== 更新快速添加按钮状态 =====
+function updateQuickAddBtn() {
+  const btn = document.getElementById('quickAddBtn');
+  const icon = document.getElementById('qaIcon');
+  const title = document.getElementById('qaTitle');
+  const desc = document.getElementById('qaDesc');
+  if (isEditMode) {
+    btn.classList.add('unlocked');
+    icon.textContent = '✓';
+    title.textContent = '就绪';
+    desc.textContent = '点击添加工具';
+  } else {
+    btn.classList.remove('unlocked');
+    icon.textContent = '＋';
+    title.textContent = '添加工具';
+    desc.textContent = '点击解锁后添加';
+  }
+}
+
+// ===== 编辑模式 =====
+function enterEditMode() {
+  isEditMode = true;
+  sessionStorage.setItem('explorer_edit', '1');
+  document.body.classList.add('edit-active');
+  document.getElementById('editBanner').classList.add('active');
+  document.getElementById('navbar').classList.add('shifted');
+  document.getElementById('lockBtn').classList.add('lock-active');
+  document.getElementById('lockBtn').textContent = '🔓';
+  document.getElementById('lockBtn').title = 'Exit Edit Mode';
+  pwFailCount = 0;
+  updateQuickAddBtn();
+  renderCards();
+}
+
+function exitEditMode() {
+  isEditMode = false;
+  sessionStorage.removeItem('explorer_edit');
+  document.body.classList.remove('edit-active');
+  document.getElementById('editBanner').classList.remove('active');
+  document.getElementById('navbar').classList.remove('shifted');
+  document.getElementById('lockBtn').classList.remove('lock-active');
+  document.getElementById('lockBtn').textContent = '🔒';
+  document.getElementById('lockBtn').title = 'Edit Mode';
+  updateQuickAddBtn();
+  if (currentPanelId) closePanel();
+  renderCards();
+  showToast('编辑模式已关闭','info');
+}
+
+// ===== 编辑操作 =====
+function setRating(id, rating) {
+  if (!isEditMode) return;
+  const t = tools.find(x => x.id === id);
+  if (t) { t.rating = rating; save(); openPanel(id); showToast('评分已更新','success'); }
+}
+
+function saveNotes(id) {
+  if (!isEditMode) return;
+  const area = document.getElementById('notesArea');
+  const t = tools.find(x => x.id === id);
+  if (t && area) { t.notes = area.value; save(); showToast('笔记已保存','success'); }
+}
+
+function deleteTool(id) {
+  if (!isEditMode) return;
+  if (!confirm('Delete this tool?')) return;
+  tools = tools.filter(x => x.id !== id);
+  save(); closePanel(); renderCards();
+  showToast('工具已删除','info');
+}
+
+function publishDraft(id) {
+  if (!isEditMode) return;
+  const t = tools.find(x => x.id === id);
+  if (t) { t.draft = false; save(); closePanel(); renderCards(); showToast('工具已发布','success'); }
+}
+
+// ===== 标签操作 =====
+function toggleToolTag(id, tag) {
+  if (!isEditMode) return;
+  const t = tools.find(x => x.id === id);
+  if (!t) return;
+  const idx = t.tags.indexOf(tag);
+  if (idx > -1) t.tags.splice(idx, 1);
+  else t.tags.push(tag);
+  save();
+  openPanel(id); // 刷新面板
+  renderCards();
+}
+
+function addCustomTag(id) {
+  if (!isEditMode) return;
+  const input = document.getElementById('customTagInput');
+  const tag = input.value.trim();
+  if (!tag) return;
+  const t = tools.find(x => x.id === id);
+  if (!t) return;
+  // 添加到工具
+  if (!t.tags.includes(tag)) t.tags.push(tag);
+  // 添加到全局自定义标签
+  if (!getAllTags().includes(tag)) {
+    customTags.push(tag);
+    localStorage.setItem('explorer_custom_tags', JSON.stringify(customTags));
+    refreshFilterPills();
+  }
+  input.value = '';
+  save();
+  openPanel(id);
+  renderCards();
+  showToast(`标签「${tag}」已添加`,'success');
+}
+
+function refreshFilterPills() {
+  const bar = document.getElementById('filterPills');
+  const existing = new Set();
+  bar.querySelectorAll('.pill').forEach(p => existing.add(p.dataset.filter));
+  getAllTags().forEach(tag => {
+    if (!existing.has(tag)) {
+      const btn = document.createElement('button');
+      btn.className = 'pill';
+      btn.dataset.filter = tag;
+      btn.textContent = getTagLabel(tag);
+      bar.appendChild(btn);
+    }
+  });
+}
+
+// ===== 黑白主题切换（默认白色） =====
+let isLightTheme = localStorage.getItem('explorer_theme') !== 'dark';
+function toggleTheme() {
+  isLightTheme = !isLightTheme;
+  document.body.classList.toggle('light-theme', isLightTheme);
+  document.getElementById('themeToggle').textContent = isLightTheme ? '☾' : '☀';
+  localStorage.setItem('explorer_theme', isLightTheme ? 'light' : 'dark');
+}
+// 恢复主题
+if (isLightTheme) {
+  document.body.classList.add('light-theme');
+  document.getElementById('themeToggle').textContent = '☾';
+}
+
+// ===== 隐藏彩蛋 =====
+document.getElementById('logoBtn').addEventListener('click', e => {
+  e.preventDefault();
+  logoClicks++;
+  document.getElementById('logoBadge').classList.add('shake');
+  setTimeout(() => document.getElementById('logoBadge').classList.remove('shake'), 400);
+  clearTimeout(logoClickTimer);
+  logoClickTimer = setTimeout(() => { logoClicks = 0; }, 2000);
+  if (logoClicks >= 5) {
+    logoClicks = 0;
+    triggerSupernova();
+  }
+});
+
+const QUOTES = [
+  '"The only way to discover the limits of the possible is to go beyond them into the impossible." — Arthur C. Clarke',
+  '"In the middle of difficulty lies opportunity." — Albert Einstein',
+  '"That tree is like some people. It grows best in the dark."',
+  '"The future belongs to those who learn more tools and combine them in creative ways." — Robert Greene',
+  '"Any sufficiently advanced technology is indistinguishable from magic." — Arthur C. Clarke',
+  '"Logic is the beginning of wisdom, not the end." — Spock',
+  '"To boldly go where no one has gone before." — Star Trek',
+  '"I don\'t believe in the no-win scenario." — James T. Kirk',
+];
+
+function triggerSupernova() {
+  const container = document.getElementById('supernova');
+  container.innerHTML = '';
+  container.classList.add('boom');
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div');
+    p.className = 'nova-particle';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 200 + Math.random() * 400;
+    const size = 4 + Math.random() * 8;
+    const colors = ['var(--accent)','var(--gold)','var(--blue)','#fff','var(--green)'];
+    p.style.cssText = `left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random()*colors.length)]};--tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist}px;animation-duration:${1+Math.random()}s;animation-delay:${Math.random()*0.3}s`;
+    container.appendChild(p);
+  }
+  const quote = document.getElementById('novaQuote');
+  quote.textContent = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  setTimeout(() => quote.classList.add('show'), 300);
+  setTimeout(() => {
+    quote.classList.remove('show');
+    container.classList.remove('boom');
+  }, 4000);
+}
+
+// ===== Toast =====
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ===== 恢复编辑模式 =====
+if (sessionStorage.getItem('explorer_edit') === '1') {
+  enterEditMode();
+}
+
+// ===== 启动 =====
+init();
+</script>
+</body>
+</html>
